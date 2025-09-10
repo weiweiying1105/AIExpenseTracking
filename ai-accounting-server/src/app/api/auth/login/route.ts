@@ -1,63 +1,135 @@
-/*
- * @Author: your name
- * @Date: 2025-08-19 14:36:41
- * @LastEditTime: 2025-09-01 17:18:12
- * @LastEditors: 韦玮莹
- * @Description: In User Settings Edit
- * @FilePath: \AIExpenseTracking\ai-accounting-server\src\app\api\auth\login\route.ts
- */
-import { Response, Request } from "express";
+import { NextRequest, NextResponse } from 'next/server'
+import jwt from 'jsonwebtoken'
+import { PrismaClient } from '@prisma/client'
+import { ResponseUtil } from '../../../../utils/response'
 
+const prisma = new PrismaClient()
 
-import { PrismaClient } from "@prisma/client";
-const APPID = process.env.WECHAT_APP_ID;
-const SECRET = process.env.WECHAT_APP_SECRET;
-import { ResponseUtil, ResponseCode } from "@/utils/response";
-import axios from "axios";
+// 微信小程序配置
+const WECHAT_CONFIG = {
+  appId: process.env.WECHAT_APP_ID!,
+  appSecret: process.env.WECHAT_APP_SECRET!,
+  grantType: 'authorization_code'
+}
 
-const prisma = new PrismaClient();
+// JWT配置
+const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key'
+const JWT_EXPIRES_IN = '7d' // token有效期7天
 
-// 定义一个异步函数，用于处理用户登录请求
-export const wxLogin = async (req: Request, res: Response) => {
+interface WechatLoginResponse {
+  openid: string
+  session_key: string
+  unionid?: string
+  errcode?: number
+  errmsg?: string
+}
+
+interface LoginRequest {
+  code: string
+  nickName?: string
+  avatarUrl?: string
+}
+
+export async function POST(request: NextRequest) {
   try {
-    // 从请求体中获取code
-    const { code } = req.body;
+    const body: LoginRequest = await request.json()
+    const { code, nickName, avatarUrl } = body
+
     if (!code) {
-      return res.json({ message: '没有code' }, { status: 400 })
-    } else {
-      const response = await axios.get(`https://api.weixin.qq.com/sns/jscode2session?appid=${APPID}&secret=${SECRET}&js_code=${code}&grant_type=authorization_code`);
-      console.log('调微信登录接口的结果:', response.data);
-
-      const { openid, session_key, errcode, errmsg } = response.data;
-      if (errcode || !openid) {
-        return res.status(400).json(
-          ResponseUtil.wechatApiError(errmsg || '微信登录失败'),
-        );
-      }
-      let _user = await prisma.user.findUnique({
-        where: { openid }
-      })
-      if (!_user) {
-        // 新用户
-        _user = prisma.user.create({
-          data: {
-            openid,
-            session_key
-          }
-        })
-      } else {
-        // 更新session_key
-        _user = prisma.user.update({
-          where: { openid },
-          data: {
-            lastLoginAt: new Date(),
-          }
-        })
-      }
-      return res.status(200).json(ResponseUtil.success(_user))
+      return NextResponse.json(
+        ResponseUtil.error('缺少必要参数code'),
+        { status: 400 }
+      )
     }
-  } catch (e) {
-    res.status(500).json(ResponseUtil.error(e))
-  }
 
+    // 第一步：使用code向微信服务器获取openid和session_key
+    const wechatUrl = `https://api.weixin.qq.com/sns/jscode2session?appid=${WECHAT_CONFIG.appId}&secret=${WECHAT_CONFIG.appSecret}&js_code=${code}&grant_type=${WECHAT_CONFIG.grantType}`
+    
+    const wechatResponse = await fetch(wechatUrl)
+    const wechatData: WechatLoginResponse = await wechatResponse.json()
+
+    // 检查微信API调用是否成功
+    if (wechatData.errcode) {
+      console.error('微信API错误:', wechatData.errmsg)
+      return NextResponse.json(
+        ResponseUtil.error(`微信登录失败: ${wechatData.errmsg}`),
+        { status: 400 }
+      )
+    }
+
+    const { openid, session_key } = wechatData
+
+    // 第二步：根据openid查找或创建用户
+    let user = await prisma.user.findUnique({
+      where: { openId: openid }
+    })
+
+    if (!user) {
+      // 新用户，创建用户记录
+      user = await prisma.user.create({
+        data: {
+          openId: openid,
+          nickName: nickName || '微信用户',
+          avatarUrl: avatarUrl || '',
+          sessionKey: session_key,
+          currency: 'CNY',
+          timezone: 'Asia/Shanghai'
+        }
+      })
+    } else {
+      // 老用户，更新用户信息和session_key
+      user = await prisma.user.update({
+        where: { openId: openid },
+        data: {
+          nickName: nickName || user.nickName,
+          avatarUrl: avatarUrl || user.avatarUrl,
+          sessionKey: session_key,
+          lastLoginAt: new Date()
+        }
+      })
+    }
+
+    // 第三步：生成JWT token
+    const tokenPayload = {
+      userId: user.id,
+      openId: user.openId,
+      nickName: user.nickName,
+      iat: Math.floor(Date.now() / 1000) // 签发时间
+    }
+
+    const token = jwt.sign(tokenPayload, JWT_SECRET, {
+      expiresIn: JWT_EXPIRES_IN
+    })
+
+    // 第四步：返回登录成功信息
+    const responseData = {
+      token,
+      userId: user.id,
+      userInfo: {
+        id: user.id,
+        nickName: user.nickName,
+        avatarUrl: user.avatarUrl,
+        currency: user.currency,
+        timezone: user.timezone
+      }
+    }
+
+    return NextResponse.json(
+      ResponseUtil.success(responseData, '登录成功')
+    )
+
+  } catch (error) {
+    console.error('登录处理错误:', error)
+    return NextResponse.json(
+      ResponseUtil.error('服务器内部错误'),
+      { status: 500 }
+    )
+  }
+}
+
+// 支持GET请求用于测试
+export async function GET() {
+  return NextResponse.json(
+    ResponseUtil.success(null, '微信登录接口正常运行')
+  )
 }
