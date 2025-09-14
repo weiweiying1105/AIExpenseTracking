@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../../../../generated/prisma'
 import { ResponseUtil } from '../../../../utils/response'
 
 const prisma = new PrismaClient()
@@ -71,7 +71,6 @@ export async function POST(request: NextRequest) {
           openId: openid,
           nickName: nickName || '微信用户',
           avatarUrl: avatarUrl || '',
-          sessionKey: session_key,
           currency: 'CNY',
           timezone: 'Asia/Shanghai'
         }
@@ -83,7 +82,6 @@ export async function POST(request: NextRequest) {
         data: {
           nickName: nickName || user.nickName,
           avatarUrl: avatarUrl || user.avatarUrl,
-          sessionKey: session_key,
           lastLoginAt: new Date()
         }
       })

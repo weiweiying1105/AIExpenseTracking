@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../../../../generated/prisma'
 import { ResponseUtil } from '../../../../utils/response'
-import { verifyToken } from '../../../../utils/jwt'
+import { withAuth, AuthenticatedRequest, verifyToken } from '../../../../utils/jwt'
 
 const prisma = new PrismaClient()
 
 // 获取用户信息
 export async function GET(request: NextRequest) {
   try {
-    // 验证JWT token
     const user = await verifyToken(request)
-    
+
     if (!user) {
       return NextResponse.json(
-        ResponseUtil.unauthorized('请先登录'),
+        ResponseUtil.error('未授权访问'),
         { status: 401 }
       )
     }
@@ -56,10 +55,10 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const user = await verifyToken(request)
-    
+
     if (!user) {
       return NextResponse.json(
-        ResponseUtil.unauthorized('请先登录'),
+        ResponseUtil.error('未授权访问'),
         { status: 401 }
       )
     }
