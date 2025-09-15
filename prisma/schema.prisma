@@ -42,6 +42,7 @@ model User {
   budgets      Budget[]
   chatSessions ChatSession[]
   preferences  UserPreference?
+  expenses     Expense[]
   
   @@map("users")
 }
@@ -107,6 +108,7 @@ model Category {
   userId      String?  // null表示系统默认分类
   user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
+  expenses    Expense[]
   
   @@map("categories")
   @@unique([userId, name, type])
@@ -278,4 +280,31 @@ enum MessageRole {
   ASSISTANT // AI助手消息
   FUNCTION  // 函数调用消息
   TOOL      // 工具调用消息
+}
+
+
+model Expense {
+  id          Int       @id @default(autoincrement())
+  amount      Decimal
+  description String?
+  currency    String    @default("CNY")
+  rawText     String
+  date        DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // 关联字段
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  
+  // AI分析相关字段
+  aiConfidence Float?
+  aiTags       String?
+  aiMerchant   String?
+  aiReasoning  String?
+  aiUsage      String?
+  
+  @@map("expenses")
 }
