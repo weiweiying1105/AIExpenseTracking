@@ -65,7 +65,19 @@ export async function GET(request: NextRequest) {
         const totalCount = expenses.length;
 
         // 按分类统计
-        const categoryStats = expenses.reduce((stats: any, expense) => {
+        const categoryStats = expenses.reduce((stats: Record<string, {
+            name: string;
+            icon: string;
+            amount: number;
+            count: number;
+            expenses: Array<{
+                id: number;
+                amount: number;
+                description: string;
+                date: Date;
+                rawText: string | null;
+            }>;
+        }>, expense) => {
             const categoryName = expense.category?.name || '未分类';
             const categoryIcon = expense.category?.icon || '📝';
 
@@ -84,7 +96,7 @@ export async function GET(request: NextRequest) {
             stats[categoryName].expenses.push({
                 id: expense.id,
                 amount: Number(expense.amount),
-                description: expense.description,
+                description: expense.description || '',
                 date: expense.createdAt,
                 rawText: expense.rawText
             });
@@ -93,10 +105,14 @@ export async function GET(request: NextRequest) {
         }, {});
 
         // 转换为数组并按金额排序
-        const categoryList = Object.values(categoryStats).sort((a: any, b: any) => b.amount - a.amount);
+        const categoryList = Object.values(categoryStats).sort((a, b) => b.amount - a.amount);
 
         // 按日期统计（每日支出）
-        const dailyStats = expenses.reduce((stats: any, expense) => {
+        const dailyStats = expenses.reduce((stats: Record<string, {
+            date: string;
+            amount: number;
+            count: number;
+        }>, expense) => {
             const date = expense.createdAt.toISOString().split('T')[0]; // YYYY-MM-DD
 
             if (!stats[date]) {
@@ -114,7 +130,7 @@ export async function GET(request: NextRequest) {
         }, {});
 
         // 转换为数组并按日期排序
-        const dailyList = Object.values(dailyStats).sort((a: any, b: any) => a.date.localeCompare(b.date));
+        const dailyList = Object.values(dailyStats).sort((a, b) => a.date.localeCompare(b.date));
 
         return NextResponse.json(
             ResponseUtil.success({
@@ -143,7 +159,7 @@ export async function GET(request: NextRequest) {
             })
         );
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('获取月度支出统计失败:', error);
         return NextResponse.json(
             ResponseUtil.error('服务器内部错误'),

@@ -91,8 +91,22 @@ export const expensePatterns: ExpensePattern[] = [
     }
 ];
 
+// 定义分类接口
+interface Category {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    name: string;
+    icon: string | null;
+    color: string | null;
+    type: string;
+    isDefault: boolean;
+    sortOrder: number;
+    userId: string | null;
+}
+
 // 快速分析支出的工具函数
-export function quickAnalyzeExpense(rawText: string, availableCategories: any[]) {
+export function quickAnalyzeExpense(rawText: string, availableCategories: Category[]) {
     const text = rawText.trim();
 
     // 尝试匹配模式

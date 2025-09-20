@@ -41,7 +41,7 @@ export const ResponseMessage = {
 } as const;
 
 // 统一响应接口
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   code: number;
   message: string;
   data: T | null;
@@ -80,7 +80,7 @@ export class ResponseUtil {
   /**
    * 失败响应
    */
-  static error(message: string, code: number = ResponseCode.BAD_REQUEST, data: any = null): ApiResponse {
+  static error(message: string, code: number = ResponseCode.BAD_REQUEST, data: unknown = null): ApiResponse {
     return {
       code,
       message,
@@ -92,7 +92,7 @@ export class ResponseUtil {
   /**
    * 登录成功响应
    */
-  static loginSuccess(data: any): ApiResponse {
+  static loginSuccess(data: unknown): ApiResponse {
     return this.success(data, ResponseMessage.LOGIN_SUCCESS, ResponseCode.LOGIN_SUCCESS);
   }
 

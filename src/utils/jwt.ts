@@ -101,7 +101,7 @@ export function refreshToken(oldToken: string): string | null {
       nickName: decoded.nickName
     })
 
-  } catch (error) {
+  } catch {
     return null
   }
 }
