@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/46R8uJqlv3.txt",
+      "destination": "/public/46R8uJqlv3.txt"
+    }
+  ]
+}
