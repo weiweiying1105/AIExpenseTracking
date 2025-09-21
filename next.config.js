@@ -7,6 +7,11 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   output: "standalone",
+  experimental: {
+    outputFileTracingIncludes: {
+      "/": ["./public/**/*"],
+    },
+  },
 };
 
 module.exports = nextConfig;
